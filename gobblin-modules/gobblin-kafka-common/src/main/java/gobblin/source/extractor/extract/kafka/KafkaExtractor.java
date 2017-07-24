@@ -292,6 +292,14 @@ public abstract class KafkaExtractor<S, D> extends EventBasedExtractor<S, D> {
     return this.partitions.get(this.currentPartitionIdx);
   }
 
+  /**
+   * Deserialize raw value bytes from the record consumed through the old Kafka-Client consumer (0.8 and below)
+   * Extractors working with {@link DecodeableKafkaRecord} need to provide an empty implementation
+   * 
+   * @param kafkaConsumerRecord record to be decoded
+   * @return deserialized value of the record
+   * @throws IOException
+   */
   protected abstract D decodeRecord(ByteArrayBasedKafkaRecord kafkaConsumerRecord) throws IOException;
 
   /**

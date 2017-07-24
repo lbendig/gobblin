@@ -21,7 +21,15 @@ dependencies {
   compile project(':gobblin-modules:gobblin-compliance')
   compile project(':gobblin-modules:gobblin-couchbase')
   compile project(':gobblin-modules:gobblin-crypto-provider')
-  compile project(':gobblin-modules:gobblin-kafka-08')
+  if (project.hasProperty('kafka09')) {
+    compile project(':gobblin-modules:gobblin-kafka-09')
+  }
+  else if (project.hasProperty('kafka011')) {
+    compile project(':gobblin-modules:gobblin-kafka-011')
+  }
+  else {
+    compile project(':gobblin-modules:gobblin-kafka-08')
+  }
   compile project(':gobblin-modules:google-ingestion')
   compile project(':gobblin-modules:gobblin-helix')
   compile project(':gobblin-modules:gobblin-azure-datalake')

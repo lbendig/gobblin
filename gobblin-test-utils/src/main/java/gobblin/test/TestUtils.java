@@ -20,6 +20,7 @@ package gobblin.test;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.avro.Schema;
@@ -45,27 +46,25 @@ public class TestUtils {
     return messageBytes;
   }
 
-
   /**
    * TODO: Currently generates a static schema avro record.
   **/
   public static GenericRecord generateRandomAvroRecord() {
+    GenericData.Record record = new GenericData.Record(generateRandomAvroRecordSchema());
+    record.put("field1", "foobar");
+    return record;
+  }
 
-    ArrayList<Schema.Field> fields = new ArrayList<Schema.Field>();
+  public static Schema generateRandomAvroRecordSchema() {
+    List<Schema.Field> fields = new ArrayList<>();
     String fieldName = "field1";
     Schema fieldSchema = Schema.create(Schema.Type.STRING);
     String docString = "doc";
     fields.add(new Schema.Field(fieldName, fieldSchema, docString, null));
-    Schema schema = Schema.createRecord("name", docString, "test",false);
+    Schema schema = Schema.createRecord("name", docString, "test", false);
     schema.setFields(fields);
-
-    GenericData.Record record = new GenericData.Record(schema);
-    record.put("field1", "foobar");
-
-    return record;
-
+    return schema;
   }
-
 
   /**
    * Returns a free port number on localhost.

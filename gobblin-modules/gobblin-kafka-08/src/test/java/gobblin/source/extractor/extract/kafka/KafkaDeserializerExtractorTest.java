@@ -17,150 +17,89 @@
 
 package gobblin.source.extractor.extract.kafka;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaJsonDeserializer;
-import io.confluent.kafka.serializers.KafkaJsonSerializer;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-
-import kafka.message.Message;
-import kafka.message.MessageAndOffset;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import java.util.Map;
 
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.common.base.Optional;
 
-import gobblin.configuration.ConfigurationKeys;
-import gobblin.configuration.State;
 import gobblin.configuration.WorkUnitState;
 import gobblin.kafka.client.ByteArrayBasedKafkaRecord;
-import gobblin.kafka.client.Kafka08ConsumerClient.Kafka08ConsumerRecord;
+import gobblin.kafka.client.KafkaConsumerClient;
 import gobblin.metrics.kafka.KafkaSchemaRegistry;
-import gobblin.metrics.kafka.SchemaRegistryException;
-import gobblin.source.extractor.WatermarkInterval;
-import gobblin.source.extractor.extract.kafka.KafkaDeserializerExtractor.Deserializers;
-import gobblin.source.workunit.WorkUnit;
+import gobblin.source.extractor.extract.kafka.KafkaDeserializerTestUtils.MockWorkUnitState;
 import gobblin.util.PropertiesUtils;
+import static gobblin.source.extractor.extract.kafka.KafkaDeserializerTestUtils.getMockDeserializerExtractor;
+
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.KafkaJsonDeserializer;
+import io.confluent.kafka.serializers.KafkaJsonSerializer;
+
+import kafka.message.Message;
+import kafka.message.MessageAndOffset;
 
 
+/**
+ * Tests {@link gobblin.source.extractor.extract.kafka.KafkaDeserializerExtractor} using Kafka08 deserializers
+ *
+ */
 @Test(groups = { "gobblin.source.extractor.extract.kafka" })
-public class KafkaDeserializerExtractorTest {
-
-  private static final String TEST_TOPIC_NAME = "testTopic";
-  private static final String TEST_URL = "testUrl";
-  private static final String TEST_RECORD_NAME = "testRecord";
-  private static final String TEST_NAMESPACE = "testNamespace";
-  private static final String TEST_FIELD_NAME = "testField";
-  private static final String TEST_FIELD_NAME2 = "testField2";
+public class KafkaDeserializerExtractorTest extends KafkaDeserializerExtractorTestBase {
 
   @Test
-  public void testDeserializeRecord() throws IOException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
+  public void testBuiltInStringDeserializerSetup() throws Exception {
+    super.checkBuiltInStringDeserializerSetup();
+  }
+  
+  @Test
+  public void testBuiltInGsonDeserializerSetup() throws Exception {
+    super.checkBuiltInGsonDeserializerSetup();
+  }
+  
+  @Test
+  public void testBuiltInConfluentAvroDeserializerSetup() throws Exception {
+    super.checkBuiltInConfluentAvroDeserializerSetup();
+  }
+  
+  @Test
+  public void testByteArrayDeserializer() throws IOException {
+    WorkUnitState mockWorkUnitState = new MockWorkUnitState().withDeserializerName("BYTE_ARRAY");
 
     String testString = "Hello World";
     ByteBuffer testStringByteBuffer = ByteBuffer.wrap(testString.getBytes(StandardCharsets.UTF_8));
+    
+    Deserializer<byte[]> kafkaDecoder = new ByteArrayDeserializer();
+    kafkaDecoder.configure(PropertiesUtils.propsToStringKeyMap(mockWorkUnitState.getProperties()), false);
 
-    Deserializer<Object> mockKafkaDecoder = mock(Deserializer.class);
-    KafkaSchemaRegistry<?, ?> mockKafkaSchemaRegistry = mock(KafkaSchemaRegistry.class);
-    when(mockKafkaDecoder.deserialize(TEST_TOPIC_NAME, testStringByteBuffer.array())).thenReturn(testString);
-
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState,
-        Optional.fromNullable(Deserializers.BYTE_ARRAY),
-        mockKafkaDecoder, mockKafkaSchemaRegistry);
-
+    KafkaDeserializerExtractor kafkaDecoderExtractor =
+        KafkaDeserializerTestUtils.getMockDeserializerExtractor(mockWorkUnitState, new KafkaDeserializerWrapper(kafkaDecoder), Optional.absent());
+    
     ByteArrayBasedKafkaRecord mockMessageAndOffset = getMockMessageAndOffset(testStringByteBuffer);
-
-    Assert.assertEquals(kafkaDecoderExtractor.decodeRecord(mockMessageAndOffset), testString);
+    Assert.assertEquals(new String((byte[])kafkaDecoderExtractor.decodeRecord(mockMessageAndOffset)), testString);
+    kafkaDecoderExtractor.kafkaConsumerClient.close();
   }
 
   @Test
-  public void testBuiltInStringDeserializer() throws ReflectiveOperationException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE,
-        KafkaDeserializerExtractor.Deserializers.STRING.name());
-
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState);
-
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaDeserializer().getClass(),
-        KafkaDeserializerExtractor.Deserializers.STRING.getDeserializerClass());
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaSchemaRegistry().getClass(),
-        KafkaDeserializerExtractor.Deserializers.STRING.getSchemaRegistryClass());
-  }
-  
-  @Test
-  public void testBuiltInGsonDeserializer() throws ReflectiveOperationException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE,
-        KafkaDeserializerExtractor.Deserializers.GSON.name());
-
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState);
-
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaDeserializer().getClass(),
-        KafkaDeserializerExtractor.Deserializers.GSON.getDeserializerClass());
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaSchemaRegistry().getClass(),
-        KafkaDeserializerExtractor.Deserializers.GSON.getSchemaRegistryClass());
-  }
-  
-  @Test
-  public void testBuiltInConfluentAvroDeserializer() throws ReflectiveOperationException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE,
-        KafkaDeserializerExtractor.Deserializers.CONFLUENT_AVRO.name());
-
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState) {
-      @Override
-      public Object getSchema() {
-        return SchemaBuilder.record(TEST_RECORD_NAME)
-            .namespace(TEST_NAMESPACE).fields()
-            .name(TEST_FIELD_NAME).type().stringType().noDefault()
-            .endRecord();
-      }
-    };
-
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaDeserializer().getClass(),
-        KafkaDeserializerExtractor.Deserializers.CONFLUENT_AVRO.getDeserializerClass());
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaSchemaRegistry().getClass(),
-        KafkaDeserializerExtractor.Deserializers.CONFLUENT_AVRO.getSchemaRegistryClass());
-  }
-
-  @Test
-  public void testCustomDeserializer() throws ReflectiveOperationException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState
-        .setProp(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE, KafkaJsonDeserializer.class.getName());
-    mockWorkUnitState
-        .setProp(KafkaSchemaRegistry.KAFKA_SCHEMA_REGISTRY_CLASS, SimpleKafkaSchemaRegistry.class.getName());
-
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState);
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaDeserializer().getClass(), KafkaJsonDeserializer.class);
-    Assert.assertEquals(kafkaDecoderExtractor.getKafkaSchemaRegistry().getClass(), SimpleKafkaSchemaRegistry.class);
-  }
-
-  @Test
-  public void testConfluentAvroDeserializer() throws IOException, RestClientException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp("schema.registry.url", TEST_URL);
+  public void testConfluentAvroDeserializer() throws Exception {
+    WorkUnitState mockWorkUnitState = new MockWorkUnitState()
+        .withDeserializerName(KafkaDeserializers.CONFLUENT_AVRO.toString())
+        .with(ConfluentKafkaSchemaRegistry.CONFLUENT_SCHEMA_REGISTRY_URL, TEST_URL);
 
     Schema schema = SchemaBuilder.record(TEST_RECORD_NAME)
         .namespace(TEST_NAMESPACE).fields()
@@ -170,7 +109,7 @@ public class KafkaDeserializerExtractorTest {
     GenericRecord testGenericRecord = new GenericRecordBuilder(schema).set(TEST_FIELD_NAME, "testValue").build();
 
     SchemaRegistryClient mockSchemaRegistryClient = mock(SchemaRegistryClient.class);
-    when(mockSchemaRegistryClient.getByID(any(Integer.class))).thenReturn(schema);
+    when(mockSchemaRegistryClient.getBySubjectAndID(any(String.class), any(Integer.class))).thenReturn(schema);
 
     Serializer<Object> kafkaEncoder = new KafkaAvroSerializer(mockSchemaRegistryClient);
     Deserializer<Object> kafkaDecoder = new KafkaAvroDeserializer(mockSchemaRegistryClient);
@@ -178,35 +117,38 @@ public class KafkaDeserializerExtractorTest {
     ByteBuffer testGenericRecordByteBuffer =
         ByteBuffer.wrap(kafkaEncoder.serialize(TEST_TOPIC_NAME, testGenericRecord));
 
-    KafkaSchemaRegistry<Integer, Schema> mockKafkaSchemaRegistry = mock(KafkaSchemaRegistry.class);
-    KafkaDeserializerExtractor kafkaDecoderExtractor = 
-        new KafkaDeserializerExtractor(mockWorkUnitState, 
-            Optional.fromNullable(Deserializers.CONFLUENT_AVRO), kafkaDecoder, mockKafkaSchemaRegistry);
-
+    KafkaDeserializerExtractor kafkaDecoderExtractor =
+        KafkaDeserializerTestUtils.getMockDeserializerExtractor(mockWorkUnitState, new KafkaDeserializerWrapper(kafkaDecoder), Optional.absent());
     ByteArrayBasedKafkaRecord mockMessageAndOffset = getMockMessageAndOffset(testGenericRecordByteBuffer);
-
+   
     Assert.assertEquals(kafkaDecoderExtractor.decodeRecord(mockMessageAndOffset), testGenericRecord);
+    kafkaDecoderExtractor.kafkaConsumerClient.close();
+   
   }
   
   @Test
-  public void testConfluentAvroDeserializerForSchemaEvolution() throws IOException, RestClientException, SchemaRegistryException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp("schema.registry.url", TEST_URL);
-
+  public void testConfluentAvroDeserializerForSchemaEvolution() throws Exception {
+    WorkUnitState mockWorkUnitState = new MockWorkUnitState()
+        .withDeserializerName(KafkaDeserializers.CONFLUENT_AVRO.name())
+        .with(ConfluentKafkaSchemaRegistry.CONFLUENT_SCHEMA_REGISTRY_URL, TEST_URL);
+    
     Schema schemaV1 = SchemaBuilder.record(TEST_RECORD_NAME)
-        .namespace(TEST_NAMESPACE).fields()
+        .namespace(TEST_NAMESPACE)
+        .fields()
         .name(TEST_FIELD_NAME).type().stringType().noDefault()
         .endRecord();
-    
+
     Schema schemaV2 = SchemaBuilder.record(TEST_RECORD_NAME)
-        .namespace(TEST_NAMESPACE).fields()
+        .namespace(TEST_NAMESPACE)
+        .fields()
         .name(TEST_FIELD_NAME).type().stringType().noDefault()
-        .optionalString(TEST_FIELD_NAME2).endRecord();
-        
+        .optionalString(TEST_FIELD_NAME2)
+        .endRecord();
+
     GenericRecord testGenericRecord = new GenericRecordBuilder(schemaV1).set(TEST_FIELD_NAME, "testValue").build();
 
     SchemaRegistryClient mockSchemaRegistryClient = mock(SchemaRegistryClient.class);
-    when(mockSchemaRegistryClient.getByID(any(Integer.class))).thenReturn(schemaV1);
+    when(mockSchemaRegistryClient.getBySubjectAndID(any(String.class), any(Integer.class))).thenReturn(schemaV1);
 
     Serializer<Object> kafkaEncoder = new KafkaAvroSerializer(mockSchemaRegistryClient);
     Deserializer<Object> kafkaDecoder = new KafkaAvroDeserializer(mockSchemaRegistryClient);
@@ -216,71 +158,81 @@ public class KafkaDeserializerExtractorTest {
 
     KafkaSchemaRegistry<Integer, Schema> mockKafkaSchemaRegistry = mock(KafkaSchemaRegistry.class);
     when(mockKafkaSchemaRegistry.getLatestSchemaByTopic(TEST_TOPIC_NAME)).thenReturn(schemaV2);
-    
-    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState,
-        Optional.fromNullable(Deserializers.CONFLUENT_AVRO), kafkaDecoder, mockKafkaSchemaRegistry);
-    when(kafkaDecoderExtractor.getSchema()).thenReturn(schemaV2);
-    
+
+    KafkaDeserializerExtractor kafkaDecoderExtractor = getMockDeserializerExtractor(mockWorkUnitState,
+        new KafkaDeserializerWrapper(kafkaDecoder), Optional.of(mockKafkaSchemaRegistry));
+
     ByteArrayBasedKafkaRecord mockMessageAndOffset = getMockMessageAndOffset(testGenericRecordByteBuffer);
 
     GenericRecord received = (GenericRecord) kafkaDecoderExtractor.decodeRecord(mockMessageAndOffset);
     Assert.assertEquals(received.toString(), "{\"testField\": \"testValue\", \"testField2\": null}");
-    
+    kafkaDecoderExtractor.kafkaConsumerClient.close();
   }
 
   @Test
-  public void testConfluentJsonDeserializer() throws IOException {
-    WorkUnitState mockWorkUnitState = getMockWorkUnitState();
-    mockWorkUnitState.setProp("json.value.type", KafkaRecord.class.getName());
+  public void testConfluentJsonDeserializer() throws Exception {
+    WorkUnitState mockWorkUnitState = new MockWorkUnitState()
+        .withDeserializerName("CONFLUENT_JSON")
+        .with("json.value.type", KafkaRecord.class.getName());
 
     KafkaRecord testKafkaRecord = new KafkaRecord("Hello World");
 
-    Serializer<KafkaRecord> kafkaEncoder = new KafkaJsonSerializer<>();
+    Serializer<Object> kafkaEncoder = new KafkaJsonSerializer<>();
     kafkaEncoder.configure(PropertiesUtils.propsToStringKeyMap(mockWorkUnitState.getProperties()), false);
 
-    Deserializer<KafkaRecord> kafkaDecoder = new KafkaJsonDeserializer<>();
+    Deserializer<Object> kafkaDecoder = new KafkaJsonDeserializer<>();
     kafkaDecoder.configure(PropertiesUtils.propsToStringKeyMap(mockWorkUnitState.getProperties()), false);
 
     ByteBuffer testKafkaRecordByteBuffer = ByteBuffer.wrap(kafkaEncoder.serialize(TEST_TOPIC_NAME, testKafkaRecord));
 
-    KafkaSchemaRegistry<?, ?> mockKafkaSchemaRegistry = mock(KafkaSchemaRegistry.class);
     KafkaDeserializerExtractor kafkaDecoderExtractor =
-        new KafkaDeserializerExtractor(mockWorkUnitState, 
-            Optional.fromNullable(Deserializers.CONFLUENT_JSON), kafkaDecoder, mockKafkaSchemaRegistry);
-
+        KafkaDeserializerTestUtils.getMockDeserializerExtractor(mockWorkUnitState, new KafkaDeserializerWrapper(kafkaDecoder), Optional.absent());
+    
     ByteArrayBasedKafkaRecord mockMessageAndOffset = getMockMessageAndOffset(testKafkaRecordByteBuffer);
     Assert.assertEquals(kafkaDecoderExtractor.decodeRecord(mockMessageAndOffset), testKafkaRecord);
+    kafkaDecoderExtractor.kafkaConsumerClient.close();
   }
+  
+  public static class CustomDeserializer implements Deserializer<String> {
 
-  private WorkUnitState getMockWorkUnitState() {
-    WorkUnit mockWorkUnit = WorkUnit.createEmpty();
-    mockWorkUnit.setWatermarkInterval(new WatermarkInterval(new MultiLongWatermark(new ArrayList<Long>()),
-        new MultiLongWatermark(new ArrayList<Long>())));
+    public CustomDeserializer() {
+    }
 
-    WorkUnitState mockWorkUnitState = new WorkUnitState(mockWorkUnit, new State());
-    mockWorkUnitState.setProp(KafkaSource.TOPIC_NAME, TEST_TOPIC_NAME);
-    mockWorkUnitState.setProp(KafkaSource.PARTITION_ID, "1");
-    mockWorkUnitState.setProp(ConfigurationKeys.KAFKA_BROKERS, "localhost:8080");
-    mockWorkUnitState.setProp(KafkaSchemaRegistry.KAFKA_SCHEMA_REGISTRY_URL, TEST_URL);
+    @Override
+    public void configure(Map<String, ?> configs, boolean isKey) {
 
-    return mockWorkUnitState;
+    }
+
+    @Override
+    public String deserialize(String topic, byte[] data) {
+      return null;
+    }
+
+    @Override
+    public void close() {
+    }
   }
+  
+  @Test
+  public void testCustomDeserializer() throws Exception {
+    
+    WorkUnitState mockWorkUnitState = new MockWorkUnitState()
+        .withDeserializerName(CustomDeserializer.class.getName())
+        .withSchemaRegistryName(SimpleKafkaSchemaRegistry.class.getName());
 
+    KafkaDeserializerExtractor kafkaDecoderExtractor = new KafkaDeserializerExtractor(mockWorkUnitState);
+    
+    Assert.assertEquals(kafkaDecoderExtractor.getKafkaDeserializer().getDeserializerClass(), CustomDeserializer.class);
+    Assert.assertEquals(kafkaDecoderExtractor.getKafkaSchemaRegistry().getClass(), SimpleKafkaSchemaRegistry.class);
+    kafkaDecoderExtractor.kafkaConsumerClient.close();
+  }
+  
   private ByteArrayBasedKafkaRecord getMockMessageAndOffset(ByteBuffer payload) {
     MessageAndOffset mockMessageAndOffset = mock(MessageAndOffset.class);
     Message mockMessage = mock(Message.class);
     when(mockMessage.payload()).thenReturn(payload);
     when(mockMessageAndOffset.message()).thenReturn(mockMessage);
-    return new Kafka08ConsumerRecord(mockMessageAndOffset);
+    return new KafkaConsumerClient.Kafka08ConsumerRecord(mockMessageAndOffset);
   }
 
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @EqualsAndHashCode
-  @Getter
-  @Setter
-  private static class KafkaRecord {
-
-    private String value;
-  }
 }

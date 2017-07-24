@@ -89,6 +89,22 @@ public abstract class KafkaSchemaRegistry<K, S> {
       throw Throwables.propagate(e);
     }
   }
+  
+  @SuppressWarnings("unchecked")
+  public static <K, S> KafkaSchemaRegistry<K, S> get(Properties props, String schemaRegistryClass) {
+    Preconditions.checkNotNull(schemaRegistryClass, "Missing required schema registry class");
+    Class<? extends KafkaSchemaRegistry<?, ?>> clazz;
+    try {
+      clazz =
+          (Class<? extends KafkaSchemaRegistry<?, ?>>) Class.forName(schemaRegistryClass);
+      return (KafkaSchemaRegistry<K, S>) ConstructorUtils.invokeConstructor(clazz, props);
+    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException
+        | InstantiationException e) {
+      log.error("Failed to instantiate " + KafkaSchemaRegistry.class, e);
+      throw Throwables.propagate(e);
+    }
+  }
+  
 
   /**
    * Get schema from schema registry by key.

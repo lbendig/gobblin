@@ -58,6 +58,7 @@ dependencies {
 
   testCompile project(":gobblin-runtime")
   testCompile project(":gobblin-test-utils")
+  testCompile project(":gobblin-modules:gobblin-kafka-common").sourceSets.test.output
   testCompile externalDependency.jsonAssert
   testCompile externalDependency.mockito
   testCompile externalDependency.testng

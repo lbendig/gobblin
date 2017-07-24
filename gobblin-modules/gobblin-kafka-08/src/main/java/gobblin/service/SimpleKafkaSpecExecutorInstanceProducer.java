@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Future;
-
 import javax.annotation.concurrent.NotThreadSafe;
 
-import org.apache.avro.mapred.AvroJob;
 import org.slf4j.Logger;
 
 import com.google.common.base.Optional;
@@ -33,7 +31,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 
-import gobblin.kafka.writer.Kafka08DataWriter;
+import gobblin.kafka.writer.KafkaDataWriter;
 import gobblin.metrics.reporter.util.AvroBinarySerializer;
 import gobblin.metrics.reporter.util.AvroSerializer;
 import gobblin.metrics.reporter.util.FixedSchemaVersionWriter;
@@ -50,7 +48,7 @@ public class SimpleKafkaSpecExecutorInstanceProducer extends SimpleKafkaSpecExec
     implements SpecExecutorInstanceProducer<Spec>, Closeable  {
 
   // Producer
-  protected Kafka08DataWriter<byte[]> _kafka08Producer;
+  protected KafkaDataWriter<byte[]> _kafka08Producer;
   private final AvroSerializer<AvroJobSpec> _serializer;
 
   public SimpleKafkaSpecExecutorInstanceProducer(Config config, Optional<Logger> log) {
@@ -111,9 +109,9 @@ public class SimpleKafkaSpecExecutorInstanceProducer extends SimpleKafkaSpecExec
      _kafka08Producer.close();
   }
 
-  private Kafka08DataWriter<byte[]> getKafka08Producer() {
+  private KafkaDataWriter<byte[]> getKafka08Producer() {
     if (null == _kafka08Producer) {
-      _kafka08Producer = new Kafka08DataWriter<byte[]>(ConfigUtils.configToProperties(_config));
+      _kafka08Producer = new KafkaDataWriter<byte[]>(ConfigUtils.configToProperties(_config));
     }
     return _kafka08Producer;
   }

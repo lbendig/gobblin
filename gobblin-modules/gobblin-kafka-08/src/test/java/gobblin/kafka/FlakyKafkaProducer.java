@@ -18,11 +18,8 @@
 package gobblin.kafka;
 
 import java.util.Properties;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -78,7 +75,7 @@ public class FlakyKafkaProducer<K,V> extends KafkaProducer<K,V> {
   public FlakyKafkaProducer(Properties properties) {
     super(properties);
     Config config = ConfigFactory.parseProperties(properties);
-    errorManager = new ErrorManager(config);
+    errorManager = new ErrorManager<V>(config);
   }
 
   @Override

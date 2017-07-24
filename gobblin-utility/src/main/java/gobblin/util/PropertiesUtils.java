@@ -79,4 +79,28 @@ public class PropertiesUtils {
 
     return extractedProperties;
   }
+  
+  /**
+   * Extract all the keys that start with a <code>prefix</code> in {@link Properties} to a new {@link Properties}
+   * instance without including the prefix in the keys 
+   *
+   * @param properties the given {@link Properties} instance
+   * @param prefix of keys to be extracted and removed from the result
+   * @return a {@link Properties} instance
+   */
+  public static Properties stripPrefix(Properties properties, Optional<String> prefix) {
+    Preconditions.checkNotNull(properties);
+    Preconditions.checkNotNull(prefix);
+    
+    Properties strippedProps = new Properties();
+    if (!prefix.isPresent()) return strippedProps;
+    properties.stringPropertyNames().forEach( s -> {
+      String prefixVal = prefix.get();
+      if (s.startsWith(prefixVal)) {
+        strippedProps.setProperty(s.substring(prefixVal.length()), properties.getProperty(s));
+      }
+    });
+    return strippedProps;
+  }
+  
 }

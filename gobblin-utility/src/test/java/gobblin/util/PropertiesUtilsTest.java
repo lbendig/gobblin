@@ -52,4 +52,33 @@ public class PropertiesUtilsTest {
     Assert.assertTrue(!extractedPropertiesK3.containsKey("k1.kk1"));
     Assert.assertTrue(!extractedPropertiesK3.containsKey("k2.kk"));
   }
+  
+  @Test
+  public void testStripPrefix() {
+
+    Properties properties = new Properties();
+    properties.setProperty("k1.kk1", "v1");
+    properties.setProperty("k1.kk2", "v2");
+    properties.setProperty("k2.kk", "v3");
+
+    // First prefix
+    Properties extractedPropertiesK1 = PropertiesUtils.stripPrefix(properties, Optional.of("k1."));
+    Assert.assertEquals(extractedPropertiesK1.getProperty("kk1"), "v1");
+    Assert.assertEquals(extractedPropertiesK1.getProperty("kk2"), "v2");
+    Assert.assertTrue(!extractedPropertiesK1.containsKey("k2.kk"));
+
+    // Second prefix
+    Properties extractedPropertiesK2 = PropertiesUtils.stripPrefix(properties, Optional.of("k2."));
+    Assert.assertTrue(!extractedPropertiesK2.containsKey("kk1"), "v1");
+    Assert.assertTrue(!extractedPropertiesK2.containsKey("kk2"), "v2");
+    Assert.assertEquals(extractedPropertiesK2.getProperty("kk"), "v3");
+    
+    // Missing prefix
+    Properties extractedPropertiesK3 = PropertiesUtils.extractPropertiesWithPrefix(properties, Optional.of("k3."));
+    Assert.assertTrue(!extractedPropertiesK3.containsKey("k1.kk1"));
+    Assert.assertTrue(!extractedPropertiesK3.containsKey("k1.kk1"));
+    Assert.assertTrue(!extractedPropertiesK3.containsKey("k2.kk"));
+    Assert.assertEquals(extractedPropertiesK3.size(), 0);
+  }
+  
 }

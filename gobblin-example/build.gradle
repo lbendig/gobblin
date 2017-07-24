@@ -22,7 +22,15 @@ dependencies {
     compile project(":gobblin-core")
     compile project(":gobblin-runtime")
     compile project(":gobblin-data-management")
-    runtime project(":gobblin-modules:gobblin-kafka-08")
+    if (project.hasProperty('kafka09')) {
+      compile project(':gobblin-modules:gobblin-kafka-09')
+    }
+    else if (project.hasProperty('kafka011')) {
+      compile project(':gobblin-modules:gobblin-kafka-011')
+    }
+    else {
+      compile project(':gobblin-modules:gobblin-kafka-08')
+    }
     runtime project(":gobblin-modules:gobblin-eventhub")
     compile project(":gobblin-modules:gobblin-http")
     compile externalDependency.avro

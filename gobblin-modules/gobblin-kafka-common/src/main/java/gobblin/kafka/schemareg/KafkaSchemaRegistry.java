@@ -19,8 +19,6 @@ package gobblin.kafka.schemareg;
 
 import java.io.IOException;
 
-import org.apache.avro.Schema;
-
 
 /**
  * An interface for a Kafka Schema Registry
@@ -30,7 +28,7 @@ import org.apache.avro.Schema;
  * @param <K> : the type of the schema identifier (e.g. int, string, md5, ...)
  * @param <S> : the type of the schema system in use (e.g. avro's Schema, ... )
  */
-public interface  KafkaSchemaRegistry<K, S> {
+public interface KafkaSchemaRegistry<K, S> {
 
   /**
    * Register this schema under the provided name

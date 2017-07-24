@@ -72,7 +72,8 @@ public class SimpleKafkaSpecExecutorInstanceTest extends KafkaTestBase {
     // Properties for Consumer
     _properties.setProperty(ConfigurationKeys.KAFKA_BROKERS, _kafkaBrokers);
     _properties.setProperty(SimpleKafkaSpecExecutorInstanceProducer.SPEC_KAFKA_TOPICS_KEY, TOPIC);
-
+    _properties.setProperty("kafka.deserializer.type", "BYTE_ARRAY");
+    
     // SEI Producer
     _seip = _closer.register(new SimpleKafkaSpecExecutorInstanceProducer(ConfigUtils.propertiesToConfig(_properties)));
 

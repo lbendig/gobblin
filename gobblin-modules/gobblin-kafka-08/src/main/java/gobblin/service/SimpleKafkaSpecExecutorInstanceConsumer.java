@@ -46,7 +46,7 @@ import com.typesafe.config.Config;
 import gobblin.kafka.client.ByteArrayBasedKafkaRecord;
 import gobblin.kafka.client.DecodeableKafkaRecord;
 import gobblin.kafka.client.GobblinKafkaConsumerClient;
-import gobblin.kafka.client.Kafka08ConsumerClient;
+import gobblin.kafka.client.KafkaConsumerClient;
 import gobblin.kafka.client.KafkaConsumerRecord;
 import gobblin.metrics.reporter.util.FixedSchemaVersionWriter;
 import gobblin.metrics.reporter.util.SchemaVersionWriter;
@@ -81,7 +81,7 @@ public class SimpleKafkaSpecExecutorInstanceConsumer extends SimpleKafkaSpecExec
     super(config, log);
 
     // Consumer
-    _kafka08Consumer = new Kafka08ConsumerClient.Factory().create(config);
+    _kafka08Consumer = new KafkaConsumerClient.Factory().create(config);
     List<KafkaTopic> kafkaTopics = _kafka08Consumer.getFilteredTopics(Collections.EMPTY_LIST,
         Lists.newArrayList(Pattern.compile(config.getString(SPEC_KAFKA_TOPICS_KEY))));
     _partitions = kafkaTopics.get(0).getPartitions();

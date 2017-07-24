@@ -57,6 +57,8 @@ public class ConfluentKafkaSchemaRegistry extends KafkaSchemaRegistry<Integer, S
 
   public static final String CONFLUENT_SCHEMA_NAME_SUFFIX = "kafka.schema_registry.confluent.schema_name_suffix";
 
+  public static final String CONFLUENT_SCHEMA_REGISTRY_URL = "schema.registry.url";
+
   // Default suffix of the topic name to register / retrieve from the registry
   private static final String DEFAULT_CONFLUENT_SCHEMA_NAME_SUFFIX = "-value";
 

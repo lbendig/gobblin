@@ -26,9 +26,6 @@ import gobblin.source.extractor.Extractor;
 import gobblin.util.ClassAliasResolver;
 import gobblin.util.reflection.GobblinConstructorUtils;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 
 /**
  * A {@link KafkaSource} to use with arbitrary {@link KafkaExtractor}. Specify the extractor to use with key

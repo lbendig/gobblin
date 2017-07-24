@@ -16,24 +16,24 @@
  */
 package gobblin.kafka.client;
 
-import com.google.common.base.Function;
+import java.util.List;
+import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
+
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import gobblin.source.extractor.extract.kafka.KafkaTopic;
-import gobblin.util.DatasetFilterUtils;
-import java.util.List;
-
-import com.google.common.base.Preconditions;
 import com.typesafe.config.Config;
 
 import gobblin.configuration.ConfigurationKeys;
+import gobblin.source.extractor.extract.kafka.DeserializerConfig;
+import gobblin.source.extractor.extract.kafka.DeserializerType;
+import gobblin.source.extractor.extract.kafka.KafkaDeserializerExtractor;
+import gobblin.source.extractor.extract.kafka.KafkaTopic;
 import gobblin.util.ConfigUtils;
-import java.util.Map;
-import java.util.regex.Pattern;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import gobblin.util.DatasetFilterUtils;
 
 
 /**
@@ -49,11 +49,20 @@ public abstract class AbstractBaseKafkaConsumerClient implements GobblinKafkaCon
   public static final String CONFIG_KAFKA_SOCKET_TIMEOUT_VALUE = CONFIG_PREFIX + "socketTimeoutMillis";
   public static final int CONFIG_KAFKA_SOCKET_TIMEOUT_VALUE_DEFAULT = 30000; // 30 seconds
 
+  protected static final String KAFKA_CLIENT_KEY_DESERIALIZER_CLASS_KEY = "key.deserializer";
+  protected static final String KAFKA_CLIENT_VALUE_DESERIALIZER_CLASS_KEY = "value.deserializer";
+  
+  public static final String GOBBLIN_CONFIG_KEY_DESERIALIZER_CLASS_KEY = CONFIG_PREFIX
+      + KAFKA_CLIENT_KEY_DESERIALIZER_CLASS_KEY;
+  public static final String GOBBLIN_CONFIG_VALUE_DESERIALIZER_CLASS_KEY = CONFIG_PREFIX
+      + KAFKA_CLIENT_VALUE_DESERIALIZER_CLASS_KEY;
+
   protected final List<String> brokers;
   protected final int fetchTimeoutMillis;
   protected final int fetchMinBytes;
   protected final int socketTimeoutMillis;
-
+  private DeserializerConfig deserializerConfig;
+  
   public AbstractBaseKafkaConsumerClient(Config config) {
     this.brokers = ConfigUtils.getStringList(config, ConfigurationKeys.KAFKA_BROKERS);
     if (this.brokers.isEmpty()) {
@@ -70,6 +79,14 @@ public abstract class AbstractBaseKafkaConsumerClient implements GobblinKafkaCon
     Preconditions.checkArgument((this.fetchTimeoutMillis < this.socketTimeoutMillis),
         "Kafka Source configuration error: FetchTimeout " + this.fetchTimeoutMillis
             + " must be smaller than SocketTimeout " + this.socketTimeoutMillis);
+    
+    Preconditions.checkArgument(
+        (config.hasPath(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE)
+            && config.getString(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE) != null),
+        "Missing required property " + KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE);
+    
+    String deserializerName = config.getString(KafkaDeserializerExtractor.KAFKA_DESERIALIZER_TYPE);
+    this.deserializerConfig = new DeserializerConfig(config, getDeserializerType(deserializerName));
   }
 
   @Override
@@ -82,8 +99,15 @@ public abstract class AbstractBaseKafkaConsumerClient implements GobblinKafkaCon
     }));
   }
 
+  public DeserializerConfig getDeserializerConfig() {
+    return deserializerConfig;
+  }
+  
   /**
    * Get a list of all kafka topics
    */
   public abstract List<KafkaTopic> getTopics();
+  
+  protected abstract Optional<DeserializerType<?>> getDeserializerType(String deserializerName);
+
 }

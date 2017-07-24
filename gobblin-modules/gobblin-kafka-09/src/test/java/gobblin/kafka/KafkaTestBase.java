@@ -28,7 +28,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.I0Itec.zkclient.ZkClient;
 
+import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
+
+import gobblin.kafka.writer.KafkaWriterConfigurationKeys;
+import gobblin.test.TestUtils;
 
 import kafka.admin.AdminUtils;
 import kafka.consumer.Consumer;
@@ -43,9 +47,8 @@ import kafka.utils.Time;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 import kafka.zk.EmbeddedZookeeper;
-import lombok.extern.slf4j.Slf4j;
 
-import gobblin.test.TestUtils;
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -199,6 +202,9 @@ public class KafkaTestBase implements Closeable {
   private final KafkaServerSuite _kafkaServerSuite;
   private final Map<String, KafkaConsumerSuite> _topicConsumerMap;
 
+  public static final Function<String, String> prodPrefix =
+      s -> KafkaWriterConfigurationKeys.KAFKA_PRODUCER_CONFIG_PREFIX + s;
+      
   public KafkaTestBase() throws InterruptedException, RuntimeException {
 
     this._kafkaServerSuite = KafkaServerSuite.getInstance();
